@@ -11,6 +11,10 @@ import {
 import { resolvers } from "./resolvers";
 import { buildSchema } from "type-graphql";
 import { connectToMongo } from "./utils/mongo";
+import { verifyJwt } from "./utils/jwt";
+import { User } from "./schema/user.schema";
+import { Context } from "./types/context";
+import { authChecker } from "./utils/authChecker";
 
 const bootstrap = async () => {
   const port = 4000;
@@ -18,7 +22,7 @@ const bootstrap = async () => {
 
   const schema = await buildSchema({
     resolvers,
-    // authChecker,
+    authChecker,
   });
 
   // Init express
@@ -31,9 +35,14 @@ const bootstrap = async () => {
 
   const server = new ApolloServer({
     schema,
-    context: (ctx) => {
+    context: (ctx: Context) => {
+      const context = ctx;
+      if(ctx.req.cookies.accessToken) {
+        const user = verifyJwt<User>(ctx.req.cookies.accessToken)
+        context.user = user
+      }
       console.log(ctx);
-      return ctx;
+      return context;
     },
     plugins: [
       process.env.NODE_ENV === "production"
